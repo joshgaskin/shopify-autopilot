@@ -1,0 +1,14 @@
+{
+  "name": "hackathon-shopify-starter",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx concurrently --names \"API,WEB\" --prefix-colors \"yellow,cyan\" \"cd backend && python -m uvicorn app.main:app --reload --port 8000\" \"cd frontend && npm run dev\"",
+    "setup": "node scripts/preflight.js && cd frontend && npm install && echo '✓ Frontend ready' && cd ../backend && pip install -r requirements.txt && echo '✓ Backend ready'",
+    "sync": "cd backend && python -c \"import asyncio; from app.sync import run_full_sync; asyncio.run(run_full_sync())\"",
+    "seed": "python backend/seed.py"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
