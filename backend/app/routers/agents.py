@@ -128,6 +128,27 @@ async def trigger_cycle():
     return {"triggered": True, **result}
 
 
+@router.post("/reset")
+async def reset_agents(db: AsyncSession = Depends(get_db)):
+    """Reset all agent state and trigger a fresh cycle with new Claude commentary."""
+    import app.agents.orchestrator as orch
+    from app.agents.models import PurchaseOrder, POLineItem
+
+    await db.execute(AgentAction.__table__.delete())
+    await db.execute(AgentState.__table__.delete())
+    await db.execute(Discount.__table__.delete())
+    await db.execute(POLineItem.__table__.delete())
+    await db.execute(PurchaseOrder.__table__.delete())
+    await db.commit()
+
+    orch._has_acted.clear()
+    orch._cycle_count = 0
+    orch._initialized = False
+
+    result = await run_cycle(async_session_factory)
+    return {"reset": True, **result}
+
+
 @router.post("/actions/{action_id}/revert")
 async def revert_action(action_id: str, db: AsyncSession = Depends(get_db)):
     """Revert an agent action. Marks it as reverted and removes the dedup key so it can be re-evaluated."""

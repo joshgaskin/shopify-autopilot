@@ -250,6 +250,21 @@ export default function AutopilotPage() {
     }
   }, [fetchAgentData])
 
+  // Reset agents — clears all actions and triggers fresh cycle
+  const handleReset = useCallback(async () => {
+    try {
+      setActions([])
+      setDailyInsight(null)
+      setStats(null)
+      setAgents((prev) => prev.map((a) => ({ ...a, status: 'evaluating' as const, actionCount: 0, lastAction: null })))
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/agents/reset`,
+        { method: 'POST' }
+      )
+      fetchAgentData()
+    } catch {}
+  }, [fetchAgentData])
+
   // Score products client-side for the inventory tab
   useEffect(() => {
     if (!productsData?.data?.length || !ordersData?.data?.length) return
@@ -273,8 +288,17 @@ export default function AutopilotPage() {
           <DailyInsight emoji="⏳" text="Agents are warming up... first cycle will start momentarily." category="Standby" />
         )}
 
-        {/* Tabs */}
-        <Tabs tabs={TABS} active={tab} onChange={setTab} />
+        {/* Tabs + Reset */}
+        <div className="flex items-center justify-between">
+          <Tabs tabs={TABS} active={tab} onChange={setTab} />
+          <button
+            onClick={handleReset}
+            className="text-xs text-text-tertiary hover:text-accent px-3 py-1.5 rounded-md hover:bg-accent/10 transition-colors"
+            title="Clear all agent actions and trigger a fresh cycle with new Claude commentary"
+          >
+            ↻ Run Fresh Cycle
+          </button>
+        </div>
 
         {/* ─── Agents Tab ─── */}
         {tab === 'agents' && (
