@@ -44,6 +44,26 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: '/autopilot',
+    label: 'AutoPilot',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M8 4v4l3 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    href: '/segments',
+    label: 'Segments',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ]
 
 export default function Shell({ title, children }: ShellProps) {

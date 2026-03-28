@@ -85,6 +85,7 @@ class ApiClient {
     if (params?.page) qs.set('page', String(params.page))
     if (params?.limit) qs.set('limit', String(params.limit))
     if (params?.search) qs.set('search', params.search)
+
     return this.fetch(`/customers?${qs}`)
   }
 
