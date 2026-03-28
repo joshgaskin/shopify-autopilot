@@ -1,4 +1,37 @@
-# Shopify Hackathon — Builder's Guide
+# AutoPilot — AI Agent Command Center for Shopify
+
+## What We Built
+5 autonomous AI agents that monitor, decide, and act on a Shopify store. Each agent has a distinct personality powered by Claude (Haiku) and takes real actions — product deactivation, purchase orders, discount codes, email drafts, customer segmentation.
+
+### Agents
+| Agent | Domain | What They Do |
+|-------|--------|-------------|
+| **Rick** | Operations | Deactivates zero-stock products, stockout alerts, health checks |
+| **Hank** | Supply Chain | Scores products (Core/Strong/Slow/Exit), creates draft POs, reorder recs |
+| **Ron** | Finance | Detects slow movers, creates discount codes in local DB |
+| **Marty** | Marketing | RFM customer segmentation, drafts win-back + VIP email campaigns |
+| **Marcus** | Chief of Staff | Coordinates all agents, deploys storefront widget, daily insights |
+
+### How It Works
+- **Backend** (`backend/app/agents/`): Orchestrator runs every 60s as an asyncio background task. Each cycle: load data → score products → detect issues → take actions → narrate via Claude → persist to SQLite.
+- **Frontend** (`frontend/pages/autopilot.tsx`): Polls `/agents/states`, `/agents/actions`, `/agents/stats` every 5s. Pure read-only dashboard — agents run independently of the browser.
+- **Shopify integration**: Agents attempt Shopify mutations (GraphQL/REST) first. When Shopify is unavailable, all actions are applied to the local SQLite database. The wiring exists for: product status updates, tag mutations, price rules, discount codes, ScriptTag injection.
+- **Seed data**: When Shopify sync fails, `backend/app/agents/seed.py` creates 25 products, ~200 orders, 40 customers with realistic velocity patterns to trigger all agent behaviors.
+
+### Key Files
+- `backend/app/agents/orchestrator.py` — Main agent loop, all 5 agents
+- `backend/app/agents/intelligence.py` — Scoring, stockout detection, RFM segmentation
+- `backend/app/agents/personas.py` — Claude system prompts per agent
+- `backend/app/agents/voice.py` — Claude API client for personality narration
+- `backend/app/agents/models.py` — AgentAction, PurchaseOrder, Discount SQLAlchemy models
+- `frontend/components/AgentDialogue.tsx` — Chat-style agent feed with avatars
+- `frontend/pages/autopilot.tsx` — Command center with 4 tabs
+- `frontend/pages/purchase-orders.tsx` — PO management page
+- `frontend/pages/segments.tsx` — Customer segmentation with donut chart
+
+---
+
+# Shopify Hackathon — Builder's Guide (Starter Repo Docs)
 
 ## What You Have
 A working Next.js 14 dashboard connected to a real Shopify store with live data flowing.

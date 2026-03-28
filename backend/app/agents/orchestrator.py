@@ -4,11 +4,15 @@ Agent Orchestrator — autonomous background loop.
 Marcus runs on a timer, coordinates Rick, Hank, and Ron.
 Each cycle: load data → score → detect → ACT → narrate → persist.
 
-Agents don't just report — they take real actions on Shopify:
-- Rick: deactivates zero-stock products, sends stockout alert emails
-- Hank: tags products with tier labels
-- Ron: creates discount codes for slow movers
-- Marcus: deploys storefront urgency widget, coordinates all agents
+Agents don't just report — they take real actions:
+- Rick: deactivates zero-stock products (local DB, or Shopify when connected)
+- Hank: creates purchase orders, tags products with tier labels
+- Ron: creates discount codes for slow movers (local DB + Shopify when connected)
+- Marty: drafts email campaigns, segments customers, tags products for content plays
+- Marcus: coordinates all agents, deploys storefront urgency widget
+
+When Shopify is connected, actions sync to the store. When offline, all
+actions are applied to the local SQLite database for demonstration.
 """
 from __future__ import annotations
 
@@ -412,7 +416,7 @@ async def _run_hank(products, orders, inventory, scored, session_factory, cycle)
 # ── RON — Finance ─────────────────────────────────────────────────────────────
 
 async def _run_ron(products, orders, inventory, scored, session_factory, cycle):
-    """Ron: slow mover detection + CREATES DISCOUNT CODES on Shopify."""
+    """Ron: slow mover detection + creates discount codes (local DB + Shopify when connected)."""
     actions = []
 
     slow_movers = detect_slow_movers(scored)
