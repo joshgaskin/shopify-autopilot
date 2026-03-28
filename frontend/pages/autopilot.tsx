@@ -196,17 +196,19 @@ export default function AutopilotPage() {
 
       if (actionsRes.ok) {
         const backendActions: BackendAgentAction[] = await actionsRes.json()
-        const mapped: AgentAction[] = backendActions.map((a) => ({
-          id: a.id,
-          timestamp: a.timestamp,
-          agent: a.agent as AgentAction['agent'],
-          type: a.type as AgentAction['type'],
-          title: a.title,
-          details: a.commentary || a.details, // Show Claude commentary when available
-          status: a.status as AgentAction['status'],
-          productId: a.productId,
-        }))
-        setActions(mapped)
+        if (backendActions.length > 0) {
+          const mapped: AgentAction[] = backendActions.map((a) => ({
+            id: a.id,
+            timestamp: a.timestamp,
+            agent: a.agent as AgentAction['agent'],
+            type: a.type as AgentAction['type'],
+            title: a.title,
+            details: a.commentary || a.details, // Show Claude commentary when available
+            status: a.status as AgentAction['status'],
+            productId: a.productId,
+          }))
+          setActions(mapped)
+        }
 
         // Find latest daily insight for the DailyInsight card
         const insight = backendActions.find((a) => a.type === 'daily_insight' && a.agent === 'Marcus' && a.commentary)
