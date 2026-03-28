@@ -4,11 +4,11 @@ import Shell from '../components/Shell'
 import Card from '../components/ui/Card'
 
 const AGENTS = [
-  { name: 'Rick', domain: 'Operations', avatar: '/agents/rick.png', desc: 'Monitors stock health, deactivates dead listings, sends stockout alerts' },
-  { name: 'Hank', domain: 'Supply Chain', avatar: '/agents/hank.png', desc: 'Scores products, creates purchase orders, manages reorder pipeline' },
-  { name: 'Ron', domain: 'Finance', avatar: '/agents/ron.webp', desc: 'Detects slow movers, creates discount codes, protects margins' },
-  { name: 'Marty', domain: 'Marketing', avatar: '/agents/marty.webp', desc: 'Segments customers, drafts email campaigns, runs win-back plays' },
-  { name: 'Marcus', domain: 'Chief of Staff', avatar: '/agents/marcus.jpg', desc: 'Coordinates all agents, mediates conflicts, delivers daily insights' },
+  { name: 'Pickle Rick', domain: 'Operations', avatar: '/agents/rick.png', desc: 'Monitors stock health, deactivates dead listings, sends stockout alerts' },
+  { name: 'Hank Scorpio', domain: 'Supply Chain', avatar: '/agents/hank.png', desc: 'Scores products, creates purchase orders, manages reorder pipeline' },
+  { name: 'Ron Swanson', domain: 'Finance', avatar: '/agents/ron.webp', desc: 'Detects slow movers, creates discount codes, protects margins' },
+  { name: 'Marty Supreme', domain: 'Marketing', avatar: '/agents/marty.webp', desc: 'Segments customers, drafts email campaigns, runs win-back plays' },
+  { name: 'Marcus Lemonis', domain: 'Chief of Staff', avatar: '/agents/marcus.jpg', desc: 'Coordinates all agents, mediates conflicts, delivers daily insights' },
 ]
 
 const PLANS = [
