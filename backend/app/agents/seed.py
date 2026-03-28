@@ -19,9 +19,10 @@ random.seed(42)
 
 SAMPLE_PRODUCTS = [
     # HOT — selling fast, running low (Rick: stockout alerts, Hank: reorder)
-    {"title": "Classic Black Hoodie", "handle": "classic-black-hoodie", "price": 89.00, "stock": 3, "status": "active", "image": "https://picsum.photos/seed/hoodie/400/400", "velocity_weight": 5.0},
-    {"title": "Fleece Quarter-Zip", "handle": "fleece-quarter-zip", "price": 95.00, "stock": 2, "status": "active", "image": "https://picsum.photos/seed/quartzip/400/400", "velocity_weight": 4.5},
-    {"title": "Vintage Wash Denim", "handle": "vintage-wash-denim", "price": 120.00, "stock": 5, "status": "active", "image": "https://picsum.photos/seed/denim/400/400", "velocity_weight": 3.8},
+    {"title": "Classic Black Hoodie", "handle": "classic-black-hoodie", "price": 89.00, "stock": 6, "status": "active", "image": "https://picsum.photos/seed/hoodie/400/400", "velocity_weight": 8.0},
+    {"title": "Fleece Quarter-Zip", "handle": "fleece-quarter-zip", "price": 95.00, "stock": 4, "status": "active", "image": "https://picsum.photos/seed/quartzip/400/400", "velocity_weight": 7.0},
+    {"title": "Vintage Wash Denim", "handle": "vintage-wash-denim", "price": 120.00, "stock": 8, "status": "active", "image": "https://picsum.photos/seed/denim/400/400", "velocity_weight": 6.0},
+    {"title": "Zip-Up Bomber Jacket", "handle": "zip-up-bomber-jacket", "price": 130.00, "stock": 5, "status": "active", "image": "https://picsum.photos/seed/bomber/400/400", "velocity_weight": 5.5},
 
     # STRONG — healthy sales, good stock (Hank: Core/Strong tier)
     {"title": "Oversized White Tee", "handle": "oversized-white-tee", "price": 45.00, "stock": 52, "status": "active", "image": "https://picsum.photos/seed/whitetee/400/400", "velocity_weight": 3.0},
@@ -50,7 +51,6 @@ SAMPLE_PRODUCTS = [
     {"title": "Slim Chino Pant", "handle": "slim-chino-pant", "price": 68.00, "stock": 40, "status": "active", "image": "https://picsum.photos/seed/chino/400/400", "velocity_weight": 1.8},
     {"title": "Ribbed Tank Top", "handle": "ribbed-tank-top", "price": 32.00, "stock": 60, "status": "active", "image": "https://picsum.photos/seed/tank/400/400", "velocity_weight": 1.5},
     {"title": "Wool Blend Beanie", "handle": "wool-blend-beanie", "price": 30.00, "stock": 85, "status": "active", "image": "https://picsum.photos/seed/beanie/400/400", "velocity_weight": 1.2},
-    {"title": "Zip-Up Bomber Jacket", "handle": "zip-up-bomber-jacket", "price": 130.00, "stock": 11, "status": "active", "image": "https://picsum.photos/seed/bomber/400/400", "velocity_weight": 2.8},
     {"title": "French Terry Joggers", "handle": "french-terry-joggers", "price": 62.00, "stock": 25, "status": "active", "image": "https://picsum.photos/seed/joggers/400/400", "velocity_weight": 3.2},
     {"title": "Pique Polo Shirt", "handle": "pique-polo-shirt", "price": 50.00, "stock": 33, "status": "active", "image": "https://picsum.photos/seed/polo/400/400", "velocity_weight": 1.0},
     {"title": "Canvas Tote Bag", "handle": "canvas-tote-bag", "price": 25.00, "stock": 90, "status": "active", "image": "https://picsum.photos/seed/tote/400/400", "velocity_weight": 0.7},
