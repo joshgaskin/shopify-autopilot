@@ -1,105 +1,67 @@
-# AutoPilot Demo Video — Script & Screenshots
+# AutoPilot Demo Video — Script
 
 ## Format
-~2-3 minutes. Screenshots with voiceover narration. Fast-paced, show-don't-tell.
+~90 seconds. Motion graphics with voiceover narration. 5 scenes. The story is simple: meet the agents, watch them work.
 
 ---
 
-## Shot 1: THE HOOK (5 sec)
-**Screenshot**: Full `/autopilot` page — Agents tab, all 5 agent cards visible with avatars and green action counts
-**Script**: "What if your Shopify store ran itself? Meet AutoPilot — 5 AI agents that monitor, decide, and act on your store. Autonomously. 24/7."
+## Scene 1: THE HOOK (10s)
+Dark screen. Text fades in: "What if your Shopify store ran itself?"
+Beat. Then the AutoPilot command center fades in — dark dashboard, 5 agent cards glowing green.
+**VO**: "Meet AutoPilot. Five AI agents that don't just monitor your store — they run it."
 
 ---
 
-## Shot 2: THE AGENTS (15 sec)
-**Screenshot**: Close-up crop of the 5 agent cards (Pickle Rick, Hank, Ron, Marty, Marcus) with status indicators pulsing green
-**Script**:
-- "Rick watches operations — he just deactivated a product with zero stock."
-- "Hank scored 25 products and created a purchase order for the Black Hoodie."
-- "Ron found slow movers and created clearance discount codes."
-- "Marty segmented 40 customers and launched a win-back campaign."
-- "Marcus coordinates them all — he sees the big picture."
+## Scene 2: MEET THE CREW (20s)
+Each agent card animates in one at a time with their avatar, name, role, and a one-line action they just took:
+
+- **Rick** (Operations) — "Deactivated 'Vintage Tee' — zero stock, no open POs."
+- **Hank** (Supply Chain) — "Created PO-001: 144 units of Black Hoodie, $5,126."
+- **Ron** (Finance) — "Generated discount EXIT-VINTAGE-TEE-30 for slow movers."
+- **Marty** (Marketing) — "Launched win-back email to 4 at-risk customers."
+- **Marcus** (Chief of Staff) — "Overrode Ron's discount — Marty wants to try content first."
+
+**VO**: "Rick handles operations. Hank manages supply chain. Ron watches the money. Marty runs marketing. And Marcus keeps them all in line. Each one powered by Claude — with a real personality."
 
 ---
 
-## Shot 3: THE DIALOGUE (20 sec)
-**Screenshot**: Agent Dialogue feed showing personality-rich messages — especially Marcus coordinating and Marty pushing back
-**Script**: "Every agent has a personality powered by Claude. Watch them talk — Marty pushes back on Ron's discounts: 'Before we slash prices, let me try a content play first.' Marcus mediates: 'Rick's stockout alert and Ron's discount are about the same product — I'm overriding.'"
+## Scene 3: WATCH THEM ARGUE (25s)
+The agent dialogue feed scrolls into view. Speech bubbles from each agent, showing a real conversation:
+
+> **Hank**: "Black Hoodie is down to 12 units. 3 days of runway. Drafting a PO."
+> **Ron**: "Vintage Tee hasn't moved in 9 days. Creating a 30% clearance code."
+> **Marty**: "Hold on Ron — before we slash prices, let me try a content play. I'll push it to the Champions segment first."
+> **Marcus**: "Marty's right. Ron, hold the discount 24 hours. Marty, you've got one cycle. If velocity doesn't move, Ron's discount goes live."
+
+**VO**: "They don't just execute — they debate. Marty pushes back on Ron's discounts. Marcus mediates. Every decision is reasoned, logged, and reversible."
 
 ---
 
-## Shot 4: CLICK TO FILTER (5 sec)
-**Screenshot**: Click Rick's card → dialogue filters to only Rick's actions (show the accent border on Rick's card)
-**Script**: "Click any agent to see just their actions. Click again to see everyone."
+## Scene 4: REAL ACTIONS, REAL DATA (20s)
+Quick cuts showing actual results of agent actions:
+
+1. A purchase order with line items and costs (Hank created it)
+2. A discount code live in Shopify (Ron created it)
+3. A product marked inactive (Rick did it)
+4. An email sent to at-risk customers (Marty triggered it)
+
+**VO**: "These aren't suggestions in a dashboard. Rick deactivated a product. Hank filed a purchase order. Ron created a discount code. Marty sent the email. Real actions on real Shopify data — happening right now."
 
 ---
 
-## Shot 5: INVENTORY INTELLIGENCE (15 sec)
-**Screenshot**: Inventory tab — DataTable with Score, Tier badges (Core/Strong/Slow/Exit), Days Left in red, Trend arrows
-**Script**: "Hank scores every product on a composite of revenue, velocity, stock health, and trend. Core products get protected. Exit products get flagged for clearance. Hover any column header to see exactly how the score is calculated."
+## Scene 5: THE CLOSE (15s)
+Pull back to full command center. All 5 agents active. Action count ticking up. Live orders streaming in.
+
+Text overlay: **"AutoPilot. Your store runs itself."**
+
+**VO**: "Five agents. One command center. Zero hand-holding. Built in 24 hours at the NS Shopify Hackathon."
 
 ---
 
-## Shot 6: PURCHASE ORDERS (10 sec)
-**Screenshot**: `/purchase-orders` page showing PO-20260328-001 with line items expanded, "Advance to ordered" button visible
-**Script**: "When Hank detects a product running low, he doesn't just alert you — he creates a draft purchase order. 144 units of the Black Hoodie, estimated cost $5,126. One click to advance it through the pipeline."
-
----
-
-## Shot 7: INBOUND STOCK (5 sec)
-**Screenshot**: Inbound Stock section on the PO page showing products with units on the way
-**Script**: "And he's smart about it — if there's already a PO inbound, Hank won't double-order. Effective runway includes incoming stock."
-
----
-
-## Shot 8: CUSTOMER SEGMENTS (10 sec)
-**Screenshot**: `/segments` page — donut chart + customer table with Champions/Loyal/At Risk badges
-**Script**: "Marty segments customers using RFM analysis. 4 Champions driving 29% of lifetime value. 4 At Risk customers with $1,700 of recoverable revenue. Each segment triggers targeted campaigns."
-
----
-
-## Shot 9: REVERT AN ACTION (5 sec)
-**Screenshot**: Hover over a Ron discount action → show the "↩ Revert" button, then show a reverted action with strikethrough
-**Script**: "Don't agree with an agent's decision? Hover and revert. The action is undone, and the agent will re-evaluate on the next cycle."
-
----
-
-## Shot 10: LIVE FEED (10 sec)
-**Screenshot**: Live tab — SSE events streaming in on the left, agent reactions on the right
-**Script**: "Everything is real-time. Orders stream in via SSE. Agents react within 60 seconds — checking stock, recalculating scores, triggering actions."
-
----
-
-## Shot 11: ACTIONS TAB (5 sec)
-**Screenshot**: Actions tab — KPI cards showing Total Actions, Discounts Created, Alerts Sent, Health Issues
-**Script**: "Full audit trail. Every action logged, every decision explained."
-
----
-
-## Shot 12: THE CLOSE (10 sec)
-**Screenshot**: Full `/autopilot` page, zoomed out hero shot with all cards and dialogue visible
-**Script**: "AutoPilot. Five agents. One command center. Your store runs itself. Built in 24 hours at the NS Shopify Hackathon."
-
----
-
-## Screenshot Checklist
-
-Take these from `http://localhost:3000` with the backend running:
-
-1. [ ] `/autopilot` — Agents tab, full page
-2. [ ] `/autopilot` — Close crop of 5 agent cards only
-3. [ ] `/autopilot` — Agent Dialogue scrolled to show personality messages
-4. [ ] `/autopilot` — Rick's card selected (accent border), filtered dialogue
-5. [ ] `/autopilot` — Inventory tab, full DataTable
-6. [ ] `/purchase-orders` — PO table + expanded line items
-7. [ ] `/purchase-orders` — Inbound Stock section
-8. [ ] `/segments` — Donut chart + customer table
-9. [ ] `/autopilot` — Hover on action showing Revert button
-10. [ ] `/autopilot` — Live tab with events + reactions
-11. [ ] `/autopilot` — Actions tab with KPI cards
-12. [ ] `/autopilot` — Full page hero shot (zoomed out)
-
-## Tips
-- Make sure backend has been running for at least 1 cycle so actions are populated
-- The agent dialogue with Claude personalities is the money shot — make sure it's visible
-- Dark theme screenshots look great — no need to change anything
+## Notes
+- Total: ~90 seconds
+- The story arc: hook → meet the characters → watch them interact → see the proof → close
+- The dialogue scene (Scene 3) is the money shot — it shows these aren't dumb bots, they reason and disagree
+- Scene 4 is the credibility shot — real Shopify mutations, not mockups
+- Dark theme throughout, accent green #00FF94 sparingly
+- Brand colors: #0A0A0B background, #151518 cards, Inter font
