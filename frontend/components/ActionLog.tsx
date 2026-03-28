@@ -12,6 +12,7 @@ const agentEmojis: Record<string, string> = {
   Rick: '🔧',
   Hank: '📦',
   Ron: '💰',
+  Marty: '📣',
   Marcus: '🎯',
 }
 
@@ -25,7 +26,9 @@ const typeLabels: Record<string, string> = {
   slow_mover_detected: 'Slow Mover',
   widget_deployed: 'Widget',
   daily_insight: 'Insight',
-  email_sent: 'Email Sent',
+  email_sent: 'Email Campaign',
+  segment_analyzed: 'Segments',
+  product_tagged: 'Tagged',
 }
 
 const statusVariant: Record<string, 'success' | 'warning' | 'error'> = {

@@ -199,3 +199,94 @@ def suggest_discounts(slow_movers: list[ScoredProduct]) -> list[DiscountSuggesti
             pct = min(40, pct + 10)
         suggestions.append(DiscountSuggestion(product=product, discount_pct=pct))
     return suggestions
+
+
+# ── Customer Segmentation (RFM) ──────────────────────────────────────────────
+
+@dataclass
+class SegmentedCustomer:
+    id: str
+    email: str
+    name: str
+    segment: str  # Champions, Loyal, At Risk, New, Lost
+    rfm_score: float
+    order_count: int
+    total_spent: float
+    days_since_last_order: int
+
+
+def segment_customers(customers: list[dict], orders: list[dict]) -> list[SegmentedCustomer]:
+    """RFM segmentation of customers."""
+    now = datetime.now(timezone.utc)
+
+    # Aggregate orders per customer
+    customer_orders: dict[str, dict] = {}
+    for order in orders:
+        cid = order.get("customer_id")
+        if not cid or order.get("financial_status") == "refunded":
+            continue
+        agg = customer_orders.setdefault(cid, {"last_at": 0, "count": 0, "spent": 0.0})
+        try:
+            ts = datetime.fromisoformat((order.get("processed_at") or order.get("created_at", "")).replace("Z", "+00:00")).timestamp()
+        except (ValueError, AttributeError):
+            ts = 0
+        agg["last_at"] = max(agg["last_at"], ts)
+        agg["count"] += 1
+        agg["spent"] += order.get("total_price", 0)
+
+    rfm_data = []
+    for c in customers:
+        agg = customer_orders.get(c["id"], {"last_at": 0, "count": c.get("orders_count", 0), "spent": c.get("total_spent", 0.0)})
+        days_since = int((now.timestamp() - agg["last_at"]) / 86400) if agg["last_at"] > 0 else 999
+        rfm_data.append({
+            "customer": c,
+            "days_since": days_since,
+            "count": agg["count"],
+            "spent": agg["spent"],
+        })
+
+    # Simple quintile scoring
+    def score(values, val, invert=False):
+        if not values:
+            return 3
+        sorted_v = sorted(values)
+        idx = next((i for i, v in enumerate(sorted_v) if v >= val), len(sorted_v))
+        pct = idx / len(sorted_v)
+        s = min(5, max(1, math.ceil(pct * 5)))
+        return 6 - s if invert else s
+
+    all_days = [d["days_since"] for d in rfm_data]
+    all_counts = [d["count"] for d in rfm_data]
+    all_spent = [d["spent"] for d in rfm_data]
+
+    result: list[SegmentedCustomer] = []
+    for d in rfm_data:
+        r = score(all_days, d["days_since"], invert=True)
+        f = score(all_counts, d["count"])
+        m = score(all_spent, d["spent"])
+        rfm = round((r + f + m) / 3, 1)
+
+        if r >= 4 and f >= 4 and m >= 4:
+            segment = "Champions"
+        elif f >= 3 and m >= 3 and r >= 3:
+            segment = "Loyal"
+        elif r <= 2 and f >= 3:
+            segment = "At Risk"
+        elif r >= 4 and f <= 2:
+            segment = "New"
+        else:
+            segment = "Lost"
+
+        c = d["customer"]
+        result.append(SegmentedCustomer(
+            id=c["id"],
+            email=c.get("email", ""),
+            name=f"{c.get('first_name', '')} {c.get('last_name', '')}".strip(),
+            segment=segment,
+            rfm_score=rfm,
+            order_count=d["count"],
+            total_spent=round(d["spent"], 2),
+            days_since_last_order=d["days_since"],
+        ))
+
+    return result

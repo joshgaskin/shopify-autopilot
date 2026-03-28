@@ -30,6 +30,7 @@ from app.agents.intelligence import (
 from app.agents.voice import narrate, narrate_coordination
 from app.agents.models import AgentAction, AgentState
 from app.agents.personas import DAILY_INSIGHTS
+from app.agents.intelligence import segment_customers
 from app.models import Product, Order, Customer
 from app.events import EventManager
 
@@ -365,11 +366,120 @@ async def _run_ron(products, orders, inventory, scored, session_factory, cycle):
     return actions
 
 
+# ── MARTY — Marketing ─────────────────────────────────────────────────────────
+
+async def _run_marty(products, orders, inventory, scored, session_factory, cycle):
+    """Marty: customer segmentation, email campaigns, promotional actions."""
+    actions = []
+
+    # Load customers
+    async with session_factory() as db:
+        result = await db.execute(select(Customer))
+        customers = [
+            {"id": c.id, "email": c.email, "first_name": c.first_name,
+             "last_name": c.last_name, "orders_count": c.orders_count,
+             "total_spent": c.total_spent}
+            for c in result.scalars().all()
+        ]
+
+    if not customers:
+        return actions
+
+    # Segment customers
+    segments = segment_customers(customers, orders)
+
+    seg_key = "segments-analyzed"
+    if seg_key not in _has_acted:
+        _has_acted.add(seg_key)
+
+        seg_counts = {}
+        for s in segments:
+            seg_counts[s.segment] = seg_counts.get(s.segment, 0) + 1
+
+        champions = seg_counts.get("Champions", 0)
+        at_risk = seg_counts.get("At Risk", 0)
+        lost = seg_counts.get("Lost", 0)
+        total_ltv = sum(s.total_spent for s in segments)
+        champion_ltv = sum(s.total_spent for s in segments if s.segment == "Champions")
+
+        context = f"Segmented {len(segments)} customers: {champions} Champions, {seg_counts.get('Loyal', 0)} Loyal, {seg_counts.get('New', 0)} New, {at_risk} At Risk, {lost} Lost. Champions are {champions} customers but ${champion_ltv:.0f} of ${total_ltv:.0f} total LTV."
+        commentary = await narrate("Marty", context)
+        await _save_action(session_factory, "Marty", "segment_analyzed", f"Segmented {len(segments)} customers", f"{champions} Champions, {at_risk} At Risk, {lost} Lost", commentary, cycle=cycle)
+        actions.append(("segment_analyzed", f"{len(segments)} customers"))
+
+    # ACTION: Win-back email for At Risk customers
+    at_risk_customers = [s for s in segments if s.segment == "At Risk"]
+    if at_risk_customers:
+        winback_key = "winback-campaign"
+        if winback_key not in _has_acted:
+            _has_acted.add(winback_key)
+
+            at_risk_revenue = sum(c.total_spent for c in at_risk_customers)
+            emails = [c.email for c in at_risk_customers[:5]]
+
+            # ACTION: Would send win-back emails
+            success, msg = await _shopify_action(
+                "winback_email",
+                lambda: None,  # Email sending is a placeholder
+                f"Would send win-back emails to {len(at_risk_customers)} At Risk customers (${at_risk_revenue:.0f} revenue at risk)"
+            )
+
+            context = f"{len(at_risk_customers)} customers haven't bought in 60+ days. That's ${at_risk_revenue:.0f} of revenue at risk. Sending a 'We miss you — here's 10% off' campaign to: {', '.join(emails[:3])}{'...' if len(emails) > 3 else ''}."
+            commentary = await narrate("Marty", context)
+            await _save_action(session_factory, "Marty", "email_sent", f"Win-back campaign: {len(at_risk_customers)} At Risk customers", f"${at_risk_revenue:.0f} revenue at risk → {msg}", commentary, cycle=cycle)
+            actions.append(("email_campaign", "win-back"))
+
+    # ACTION: VIP thank-you for Champions
+    champion_customers = [s for s in segments if s.segment == "Champions"]
+    if champion_customers:
+        vip_key = "vip-campaign"
+        if vip_key not in _has_acted:
+            _has_acted.add(vip_key)
+
+            champion_revenue = sum(c.total_spent for c in champion_customers)
+            avg_ltv = champion_revenue / len(champion_customers) if champion_customers else 0
+
+            success, msg = await _shopify_action(
+                "vip_email",
+                lambda: None,
+                f"Would send VIP early-access email to {len(champion_customers)} Champions (avg LTV ${avg_ltv:.0f})"
+            )
+
+            context = f"{len(champion_customers)} Champions with avg LTV of ${avg_ltv:.0f}. These are our best customers — sending them early access to new drops and a personal thank-you. {msg}"
+            commentary = await narrate("Marty", context)
+            await _save_action(session_factory, "Marty", "email_sent", f"VIP early-access: {len(champion_customers)} Champions", f"Avg LTV ${avg_ltv:.0f} → {msg}", commentary, cycle=cycle)
+            actions.append(("email_campaign", "vip"))
+
+    # ACTION: Tag slow movers as "needs-story" — Marty pushes back on pure discounting
+    slow = detect_slow_movers(scored)
+    for product in slow[:2]:
+        story_key = f"story-{product.id}"
+        if story_key in _has_acted:
+            continue
+        _has_acted.add(story_key)
+
+        success, msg = await _shopify_action(
+            f"tag_story_{product.id}",
+            lambda p=product: _shopify_client.graphql(
+                'mutation($id: ID!, $tags: [String!]!) { tagsAdd(id: $id, tags: $tags) { node { ... on Product { id } } } }',
+                {"id": f"gid://shopify/Product/{p.id}", "tags": ["needs-story", "marketing-review"]},
+            ),
+            f"Would tag {product.title} as needs-story — try content before discounts"
+        )
+
+        context = f"Before Ron discounts '{product.title}', let me try a content play. Tagging it for a 'last chance' feature email + social push. A story converts better than a slash. {msg}"
+        commentary = await narrate("Marty", context)
+        await _save_action(session_factory, "Marty", "product_tagged", f"Marketing review: {product.title}", f"Tagged needs-story → {msg}", commentary, product_id=product.id, cycle=cycle)
+        actions.append(("product_tagged", product.title))
+
+    return actions
+
+
 # ── MARCUS — Chief of Staff ───────────────────────────────────────────────────
 
-async def _run_marcus(products, orders, scored, session_factory, cycle, rick_actions, hank_actions, ron_actions):
+async def _run_marcus(products, orders, scored, session_factory, cycle, rick_actions, hank_actions, ron_actions, marty_actions):
     """Marcus: coordination + storefront widget + daily insight."""
-    total_actions = len(rick_actions) + len(hank_actions) + len(ron_actions)
+    total_actions = len(rick_actions) + len(hank_actions) + len(ron_actions) + len(marty_actions)
 
     # ACTION: Deploy storefront low-stock widget
     widget_key = "widget-deployed"
@@ -403,6 +513,9 @@ async def _run_marcus(products, orders, scored, session_factory, cycle, rick_act
         if ron_actions:
             types = ", ".join(set(t for t, _ in ron_actions))
             summary_parts.append(f"Ron took {len(ron_actions)} financial actions ({types})")
+        if marty_actions:
+            types = ", ".join(set(t for t, _ in marty_actions))
+            summary_parts.append(f"Marty launched {len(marty_actions)} marketing actions ({types})")
 
         # Detect conflicts
         rick_products = {n for t, n in rick_actions if t == "stockout_alert"}
@@ -451,7 +564,7 @@ async def run_cycle(session_factory: async_sessionmaker) -> dict:
 
     # Set all agents to evaluating
     async with session_factory() as db:
-        for name in ["Rick", "Hank", "Ron", "Marcus"]:
+        for name in ["Rick", "Hank", "Ron", "Marty", "Marcus"]:
             result = await db.execute(select(AgentState).where(AgentState.name == name))
             state = result.scalar_one_or_none()
             if state:
@@ -464,13 +577,14 @@ async def run_cycle(session_factory: async_sessionmaker) -> dict:
     rick_actions = await _run_rick(products, orders, inventory, scored, session_factory, cycle)
     hank_actions = await _run_hank(products, orders, inventory, scored, session_factory, cycle)
     ron_actions = await _run_ron(products, orders, inventory, scored, session_factory, cycle)
-    await _run_marcus(products, orders, scored, session_factory, cycle, rick_actions, hank_actions, ron_actions)
+    marty_actions = await _run_marty(products, orders, inventory, scored, session_factory, cycle)
+    await _run_marcus(products, orders, scored, session_factory, cycle, rick_actions, hank_actions, ron_actions, marty_actions)
 
-    total_actions = len(rick_actions) + len(hank_actions) + len(ron_actions)
+    total_actions = len(rick_actions) + len(hank_actions) + len(ron_actions) + len(marty_actions)
 
     # Set agents back to active/idle
     async with session_factory() as db:
-        for name in ["Rick", "Hank", "Ron", "Marcus"]:
+        for name in ["Rick", "Hank", "Ron", "Marty", "Marcus"]:
             result = await db.execute(select(AgentState).where(AgentState.name == name))
             state = result.scalar_one_or_none()
             if state:

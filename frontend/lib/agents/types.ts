@@ -2,7 +2,7 @@ import type { Product, Order, InventoryLevel, LiveEvent } from '../types'
 
 // ── Shared Agent Types ──────────────────────────────────────────────────────
 
-export type AgentName = 'Rick' | 'Hank' | 'Ron' | 'Marcus'
+export type AgentName = 'Rick' | 'Hank' | 'Ron' | 'Marty' | 'Marcus'
 
 export type AgentStatus = 'active' | 'idle' | 'evaluating'
 
@@ -10,6 +10,7 @@ export interface AgentState {
   name: AgentName
   domain: string
   emoji: string
+  avatar?: string
   status: AgentStatus
   lastAction: string | null
   actionCount: number
@@ -26,6 +27,8 @@ export type ActionType =
   | 'widget_deployed'
   | 'daily_insight'
   | 'email_sent'
+  | 'segment_analyzed'
+  | 'product_tagged'
 
 export interface AgentAction {
   id: string

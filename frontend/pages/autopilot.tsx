@@ -25,11 +25,12 @@ const TABS = [
   { key: 'live', label: 'Live' },
 ]
 
-const AGENT_META: Record<string, { emoji: string; domain: string }> = {
-  Rick: { emoji: '🔧', domain: 'Operations' },
-  Hank: { emoji: '📦', domain: 'Supply Chain' },
-  Ron: { emoji: '💰', domain: 'Finance' },
-  Marcus: { emoji: '🎯', domain: 'Chief of Staff' },
+const AGENT_META: Record<string, { emoji: string; domain: string; avatar: string }> = {
+  Rick: { emoji: '🔧', domain: 'Operations', avatar: '/agents/rick.jpg' },
+  Hank: { emoji: '📦', domain: 'Supply Chain', avatar: '/agents/hank.jpg' },
+  Ron: { emoji: '💰', domain: 'Finance', avatar: '/agents/ron.jpg' },
+  Marty: { emoji: '📣', domain: 'Marketing', avatar: '/agents/marty.jpg' },
+  Marcus: { emoji: '🎯', domain: 'Chief of Staff', avatar: '/agents/marcus.jpg' },
 }
 
 const tierVariant: Record<Tier, 'success' | 'warning' | 'error' | 'neutral'> = {
@@ -140,7 +141,9 @@ export default function AutopilotPage() {
   const [agents, setAgents] = useState<AgentState[]>(
     Object.entries(AGENT_META).map(([name, meta]) => ({
       name: name as AgentState['name'],
-      ...meta,
+      emoji: meta.emoji,
+      domain: meta.domain,
+      avatar: meta.avatar,
       status: 'idle' as const,
       lastAction: null,
       actionCount: 0,
@@ -245,7 +248,7 @@ export default function AutopilotPage() {
         {/* ─── Agents Tab ─── */}
         {tab === 'agents' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               {agents.map((agent) => (
                 <AgentCard key={agent.name} agent={agent} />
               ))}
