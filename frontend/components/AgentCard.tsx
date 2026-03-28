@@ -4,6 +4,8 @@ import type { AgentState } from '../lib/agents/types'
 
 interface AgentCardProps {
   agent: AgentState
+  selected?: boolean
+  onClick?: () => void
 }
 
 const statusColors: Record<string, string> = {
@@ -18,16 +20,28 @@ const statusLabels: Record<string, string> = {
   evaluating: 'Evaluating...',
 }
 
-export default function AgentCard({ agent }: AgentCardProps) {
+export default function AgentCard({ agent, selected, onClick }: AgentCardProps) {
   return (
-    <div className="bg-surface-1 border border-border rounded-lg p-4 hover:border-border-hover transition-colors duration-150">
+    <div
+      className={cn(
+        'bg-surface-1 border rounded-lg p-4 transition-all duration-150',
+        selected
+          ? 'border-accent ring-1 ring-accent/30'
+          : 'border-border hover:border-border-hover',
+        onClick && 'cursor-pointer',
+      )}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           {agent.avatar ? (
             <img
               src={agent.avatar}
               alt={agent.name}
-              className="w-10 h-10 rounded-full object-cover border border-border flex-shrink-0"
+              className={cn(
+                'w-10 h-10 rounded-full object-cover border-2 flex-shrink-0',
+                selected ? 'border-accent' : 'border-border',
+              )}
             />
           ) : (
             <span className="text-xl w-10 h-10 flex items-center justify-center">{agent.emoji}</span>
@@ -55,7 +69,12 @@ export default function AgentCard({ agent }: AgentCardProps) {
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-text-tertiary">Actions taken</span>
-        <span className="text-sm font-semibold text-accent">{agent.actionCount}</span>
+        <span className={cn(
+          'text-sm font-semibold',
+          selected ? 'text-accent' : agent.actionCount > 0 ? 'text-accent' : 'text-text-tertiary',
+        )}>
+          {agent.actionCount}
+        </span>
       </div>
     </div>
   )

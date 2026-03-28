@@ -9,10 +9,10 @@ interface AgentDialogueProps {
 }
 
 const agentAvatars: Record<string, string> = {
-  Rick: '/agents/rick.jpg',
-  Hank: '/agents/hank.jpg',
-  Ron: '/agents/ron.jpg',
-  Marty: '/agents/marty.jpg',
+  Rick: '/agents/rick.png',
+  Hank: '/agents/hank.png',
+  Ron: '/agents/ron.webp',
+  Marty: '/agents/marty.webp',
   Marcus: '/agents/marcus.jpg',
 }
 

@@ -27,10 +27,10 @@ const TABS = [
 ]
 
 const AGENT_META: Record<string, { emoji: string; domain: string; avatar: string }> = {
-  Rick: { emoji: '🔧', domain: 'Operations', avatar: '/agents/rick.jpg' },
-  Hank: { emoji: '📦', domain: 'Supply Chain', avatar: '/agents/hank.jpg' },
-  Ron: { emoji: '💰', domain: 'Finance', avatar: '/agents/ron.jpg' },
-  Marty: { emoji: '📣', domain: 'Marketing', avatar: '/agents/marty.jpg' },
+  Rick: { emoji: '🔧', domain: 'Operations', avatar: '/agents/rick.png' },
+  Hank: { emoji: '📦', domain: 'Supply Chain', avatar: '/agents/hank.png' },
+  Ron: { emoji: '💰', domain: 'Finance', avatar: '/agents/ron.webp' },
+  Marty: { emoji: '📣', domain: 'Marketing', avatar: '/agents/marty.webp' },
   Marcus: { emoji: '🎯', domain: 'Chief of Staff', avatar: '/agents/marcus.jpg' },
 }
 
@@ -151,6 +151,7 @@ export default function AutopilotPage() {
     }))
   )
   const [actions, setActions] = useState<AgentAction[]>([])
+  const [filteredAgent, setFilteredAgent] = useState<string | null>(null)
   const [scored, setScored] = useState<ScoredProduct[]>([])
   const [dailyInsight, setDailyInsight] = useState<{ commentary: string; title: string } | null>(null)
   const [stats, setStats] = useState<{ totalActions: number; currentCycle: number; byType: Record<string, number> } | null>(null)
@@ -251,14 +252,25 @@ export default function AutopilotPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               {agents.map((agent) => (
-                <AgentCard key={agent.name} agent={agent} />
+                <AgentCard
+                  key={agent.name}
+                  agent={agent}
+                  selected={filteredAgent === agent.name}
+                  onClick={() => setFilteredAgent(filteredAgent === agent.name ? null : agent.name)}
+                />
               ))}
             </div>
             <Card
-              title="Agent Dialogue"
-              subtitle={`${stats?.totalActions || actions.length} actions across ${stats?.currentCycle || 0} cycles`}
+              title={filteredAgent ? `${filteredAgent}'s Actions` : 'Agent Dialogue'}
+              subtitle={filteredAgent
+                ? `Showing ${actions.filter((a) => a.agent === filteredAgent).length} actions — click agent again to show all`
+                : `${stats?.totalActions || actions.length} actions across ${stats?.currentCycle || 0} cycles`
+              }
             >
-              <AgentDialogue actions={actions} maxItems={30} />
+              <AgentDialogue
+                actions={filteredAgent ? actions.filter((a) => a.agent === filteredAgent) : actions}
+                maxItems={30}
+              />
             </Card>
           </div>
         )}
