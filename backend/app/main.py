@@ -19,7 +19,7 @@ from app.shopify import ShopifyClient
 from app.sync import sync_all
 from app.simulator import run_simulator
 from app.agents.voice import init_voice, close_voice
-from app.agents.orchestrator import run_agent_loop
+from app.agents.orchestrator import run_agent_loop, init_orchestrator
 from app.routers import (
     store,
     products,
@@ -89,6 +89,7 @@ async def lifespan(app: FastAPI):
 
     # Start autonomous agent orchestration loop
     init_voice(settings.ANTHROPIC_API_KEY)
+    init_orchestrator(client)
     agent_task = asyncio.create_task(
         run_agent_loop(async_session_factory, interval=settings.AGENT_LOOP_INTERVAL)
     )
