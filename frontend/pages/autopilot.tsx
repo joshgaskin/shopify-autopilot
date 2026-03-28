@@ -16,7 +16,6 @@ import { useInventory } from '../hooks/useInventory'
 import { useEventStream } from '../hooks/useEventStream'
 import { formatCurrency } from '../lib/utils'
 import { scoreProducts } from '../lib/intelligence'
-import { api } from '../lib/api'
 import type { AgentState, AgentAction, ScoredProduct, Tier } from '../lib/agents/types'
 
 const TABS = [
@@ -327,7 +326,7 @@ export default function AutopilotPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <KPICard title="Total Actions" value={stats?.totalActions || actions.length} tooltip="All autonomous actions taken by agents since startup" />
               <KPICard title="Discounts Created" value={stats?.byType?.discount_created || 0} tooltip="Discount codes Ron created on Shopify for slow-moving products" />
-              <KPICard title="Alerts Sent" value={(stats?.byType?.stockout_alert || 0) + (stats?.byType?.email_sent || 0)} tooltip="Stockout alerts + email campaigns sent by Rick and Marty" />
+              <KPICard title="Alerts & Drafts" value={(stats?.byType?.stockout_alert || 0) + (stats?.byType?.email_drafted || 0)} tooltip="Stockout alerts from Rick + email drafts created by Marty" />
               <KPICard title="Health Issues" value={stats?.byType?.health_issue || 0} tooltip="Product listing problems found by Rick — missing images, $0 prices, zero-stock active products" />
             </div>
             <Card title="Full Action Log">

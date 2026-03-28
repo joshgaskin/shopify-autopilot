@@ -26,7 +26,7 @@ const typeLabels: Record<string, string> = {
   slow_mover_detected: 'Slow Mover',
   widget_deployed: 'Widget',
   daily_insight: 'Insight',
-  email_sent: 'Email Campaign',
+  email_drafted: 'Email Draft',
   segment_analyzed: 'Segments',
   product_tagged: 'Tagged',
   po_created: 'Purchase Order',

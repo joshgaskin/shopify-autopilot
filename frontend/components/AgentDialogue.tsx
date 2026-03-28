@@ -34,7 +34,7 @@ const typeLabels: Record<string, { label: string; variant: 'success' | 'warning'
   slow_mover_detected: { label: 'Slow Mover', variant: 'warning' },
   widget_deployed: { label: 'Widget', variant: 'success' },
   daily_insight: { label: 'Insight', variant: 'neutral' },
-  email_sent: { label: 'Campaign', variant: 'success' },
+  email_drafted: { label: 'Email Draft', variant: 'success' },
   segment_analyzed: { label: 'Segments', variant: 'neutral' },
   product_tagged: { label: 'Tagged', variant: 'neutral' },
   po_created: { label: 'PO Created', variant: 'success' },

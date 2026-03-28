@@ -80,9 +80,9 @@ async def _restore_has_acted(session_factory: async_sessionmaker) -> None:
                 _has_acted.add("daily-insight")
             elif action.action_type == "segment_analyzed":
                 _has_acted.add("segments-analyzed")
-            elif action.action_type == "email_sent" and "Win-back" in action.title:
+            elif action.action_type == "email_drafted" and "Win-back" in action.title:
                 _has_acted.add("winback-campaign")
-            elif action.action_type == "email_sent" and "VIP" in action.title:
+            elif action.action_type == "email_drafted" and "VIP" in action.title:
                 _has_acted.add("vip-campaign")
             elif action.action_type == "product_tagged":
                 _has_acted.add(f"story-{pid}")
@@ -533,7 +533,7 @@ async def _run_marty(products, orders, inventory, scored, session_factory, cycle
             email_draft = await narrate("Marty", email_context)
 
             details = f"Subject: We miss you! Here's 10% off your next order\nTo: {', '.join(c['email'] for c in recipients[:3])}{'...' if len(recipients) > 3 else ''}\nCode: COMEBACK10\n\n{email_draft}"
-            await _save_action(session_factory, "Marty", "email_sent", f"Win-back campaign → {len(at_risk_customers)} At Risk customers", details, email_draft, cycle=cycle)
+            await _save_action(session_factory, "Marty", "email_drafted", f"Win-back campaign → {len(at_risk_customers)} At Risk customers", details, email_draft, cycle=cycle)
             actions.append(("email_campaign", "win-back"))
 
     # ACTION: VIP thank-you for Champions
@@ -552,7 +552,7 @@ async def _run_marty(products, orders, inventory, scored, session_factory, cycle
             email_draft = await narrate("Marty", email_context)
 
             details = f"Subject: You're getting first access — new drops just landed\nTo: {', '.join(c['email'] for c in recipients[:3])}{'...' if len(recipients) > 3 else ''}\n\n{email_draft}"
-            await _save_action(session_factory, "Marty", "email_sent", f"VIP early-access → {len(champion_customers)} Champions", details, email_draft, cycle=cycle)
+            await _save_action(session_factory, "Marty", "email_drafted", f"VIP early-access → {len(champion_customers)} Champions", details, email_draft, cycle=cycle)
             actions.append(("email_campaign", "vip"))
 
     # ACTION: Tag slow movers as "needs-story" — Marty pushes back on pure discounting

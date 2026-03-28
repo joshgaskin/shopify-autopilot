@@ -26,7 +26,7 @@ export type ActionType =
   | 'slow_mover_detected'
   | 'widget_deployed'
   | 'daily_insight'
-  | 'email_sent'
+  | 'email_drafted'
   | 'segment_analyzed'
   | 'product_tagged'
   | 'po_created'
