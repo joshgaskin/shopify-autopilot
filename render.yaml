@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: shopify-autopilot
+    runtime: node
+    repo: https://github.com/joshgaskin/shopify-autopilot
+    branch: issue-1-shopify-autopilot
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: SHOPIFY_ACCESS_TOKEN
+        sync: false
+      - key: SHOPIFY_STORE_URL
+        value: gzh-06.myshopify.com
+      - key: NEXT_PUBLIC_STORE_URL
+        value: https://gzh-06.myshopify.com
+      - key: NODE_ENV
+        value: production
