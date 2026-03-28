@@ -39,7 +39,7 @@ export interface AgentAction {
   type: ActionType
   title: string
   details: string
-  status: 'success' | 'failed' | 'pending'
+  status: 'success' | 'failed' | 'pending' | 'reverted'
   productId?: string
 }
 

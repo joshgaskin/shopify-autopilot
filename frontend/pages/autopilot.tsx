@@ -229,6 +229,26 @@ export default function AutopilotPage() {
     return () => clearInterval(interval)
   }, [fetchAgentData])
 
+  // Revert an agent action
+  const handleRevert = useCallback(async (actionId: string) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/agents/actions/${actionId}/revert`,
+        { method: 'POST' }
+      )
+      if (res.ok) {
+        // Update local state immediately
+        setActions((prev) =>
+          prev.map((a) => a.id === actionId ? { ...a, status: 'reverted' as const } : a)
+        )
+        // Refresh from backend
+        fetchAgentData()
+      }
+    } catch {
+      // Silently fail — next poll will sync
+    }
+  }, [fetchAgentData])
+
   // Score products client-side for the inventory tab
   useEffect(() => {
     if (!productsData?.data?.length || !ordersData?.data?.length) return
@@ -278,6 +298,7 @@ export default function AutopilotPage() {
               <AgentDialogue
                 actions={filteredAgent ? actions.filter((a) => a.agent === filteredAgent) : actions}
                 maxItems={30}
+                onRevert={handleRevert}
               />
             </Card>
           </div>
@@ -327,7 +348,7 @@ export default function AutopilotPage() {
                 <LiveFeed maxEvents={30} />
               </Card>
               <Card title="Agent Reactions" className="min-h-[300px]">
-                <AgentDialogue actions={actions.filter((a) => a.timestamp > new Date(Date.now() - 3600000).toISOString())} maxItems={15} />
+                <AgentDialogue actions={actions.filter((a) => a.timestamp > new Date(Date.now() - 3600000).toISOString())} maxItems={15} onRevert={handleRevert} />
               </Card>
             </div>
           </div>

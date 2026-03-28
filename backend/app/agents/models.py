@@ -1,7 +1,7 @@
 """
 Agent action model — persisted to SQLite.
 """
-from sqlalchemy import JSON, Float, Integer, String
+from sqlalchemy import JSON, Boolean, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -22,6 +22,9 @@ class AgentAction(Base):
     product_id: Mapped[str | None] = mapped_column(String, nullable=True)
     cycle: Mapped[int] = mapped_column(Integer, default=0)  # which orchestration cycle
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    reverted: Mapped[bool] = mapped_column(Boolean, default=False)
+    reverted_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    revert_note: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class PurchaseOrder(Base):
