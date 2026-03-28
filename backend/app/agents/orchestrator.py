@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 _cycle_count = 0
 _has_acted: set[str] = set()
 _shopify_client = None  # Set by init_orchestrator()
+_initialized = False
 
 
 def init_orchestrator(shopify_client) -> None:
@@ -47,6 +48,54 @@ def init_orchestrator(shopify_client) -> None:
     global _shopify_client
     _shopify_client = shopify_client
     logger.info("Orchestrator initialized with Shopify client")
+
+
+async def _restore_has_acted(session_factory: async_sessionmaker) -> None:
+    """Load existing action keys from DB so we don't repeat on restart."""
+    global _initialized
+    if _initialized:
+        return
+    _initialized = True
+
+    async with session_factory() as db:
+        result = await db.execute(select(AgentAction))
+        for action in result.scalars().all():
+            # Rebuild the dedup keys from existing actions
+            pid = action.product_id or ""
+            if action.action_type == "health_issue":
+                _has_acted.add(f"health-{pid}-{action.details.split(' →')[0]}")
+            elif action.action_type == "stockout_alert":
+                _has_acted.add(f"stockout-{pid}")
+            elif action.action_type == "product_scored":
+                _has_acted.add("scored-all")
+            elif action.action_type == "reorder_recommendation":
+                _has_acted.add(f"reorder-{pid}")
+            elif action.action_type == "slow_mover_detected":
+                _has_acted.add("slow-movers-detected")
+            elif action.action_type == "discount_created":
+                _has_acted.add(f"discount-{pid}")
+            elif action.action_type == "widget_deployed":
+                _has_acted.add("widget-deployed")
+            elif action.action_type == "daily_insight" and "Daily insight" in action.title:
+                _has_acted.add("daily-insight")
+            elif action.action_type == "segment_analyzed":
+                _has_acted.add("segments-analyzed")
+            elif action.action_type == "email_sent" and "Win-back" in action.title:
+                _has_acted.add("winback-campaign")
+            elif action.action_type == "email_sent" and "VIP" in action.title:
+                _has_acted.add("vip-campaign")
+            elif action.action_type == "product_tagged":
+                _has_acted.add(f"story-{pid}")
+            elif action.action_type == "po_created":
+                pass  # PO numbers are unique, no dedup key needed
+
+        # Also restore cycle count
+        result = await db.execute(select(func.max(AgentAction.cycle)))
+        max_cycle = result.scalar() or 0
+        global _cycle_count
+        _cycle_count = max_cycle
+
+    logger.info("Restored %d dedup keys from DB, resuming from cycle %d", len(_has_acted), _cycle_count)
 
 
 async def _shopify_action(action_name: str, action_fn, fallback_msg: str) -> tuple[bool, str]:
@@ -620,6 +669,9 @@ async def run_cycle(session_factory: async_sessionmaker) -> dict:
     global _cycle_count
     _cycle_count += 1
     cycle = _cycle_count
+
+    # Restore dedup state from DB on first run (survives restarts)
+    await _restore_has_acted(session_factory)
 
     logger.info("=== Agent Cycle %d starting ===", cycle)
 
