@@ -526,18 +526,14 @@ async def _run_marty(products, orders, inventory, scored, session_factory, cycle
             _has_acted.add(winback_key)
 
             at_risk_revenue = sum(c.total_spent for c in at_risk_customers)
-            emails = [c.email for c in at_risk_customers[:5]]
+            recipients = [{"name": c.name, "email": c.email, "spent": f"${c.total_spent:.0f}"} for c in at_risk_customers[:5]]
 
-            # ACTION: Would send win-back emails
-            success, msg = await _shopify_action(
-                "winback_email",
-                lambda: None,  # Email sending is a placeholder
-                f"Would send win-back emails to {len(at_risk_customers)} At Risk customers (${at_risk_revenue:.0f} revenue at risk)"
-            )
+            # Generate email draft via Claude
+            email_context = f"Write a short win-back email for a clothing store. Target: {len(at_risk_customers)} customers who haven't purchased in 60+ days. Total revenue at risk: ${at_risk_revenue:.0f}. Include a subject line and 2-3 sentence body. Offer 10% off with code COMEBACK10. Keep it warm and personal, not corporate."
+            email_draft = await narrate("Marty", email_context)
 
-            context = f"{len(at_risk_customers)} customers haven't bought in 60+ days. That's ${at_risk_revenue:.0f} of revenue at risk. Sending a 'We miss you — here's 10% off' campaign to: {', '.join(emails[:3])}{'...' if len(emails) > 3 else ''}."
-            commentary = await narrate("Marty", context)
-            await _save_action(session_factory, "Marty", "email_sent", f"Win-back campaign: {len(at_risk_customers)} At Risk customers", f"${at_risk_revenue:.0f} revenue at risk → {msg}", commentary, cycle=cycle)
+            details = f"Subject: We miss you! Here's 10% off your next order\nTo: {', '.join(c['email'] for c in recipients[:3])}{'...' if len(recipients) > 3 else ''}\nCode: COMEBACK10\n\n{email_draft}"
+            await _save_action(session_factory, "Marty", "email_sent", f"Win-back campaign → {len(at_risk_customers)} At Risk customers", details, email_draft, cycle=cycle)
             actions.append(("email_campaign", "win-back"))
 
     # ACTION: VIP thank-you for Champions
@@ -549,16 +545,14 @@ async def _run_marty(products, orders, inventory, scored, session_factory, cycle
 
             champion_revenue = sum(c.total_spent for c in champion_customers)
             avg_ltv = champion_revenue / len(champion_customers) if champion_customers else 0
+            recipients = [{"name": c.name, "email": c.email, "spent": f"${c.total_spent:.0f}"} for c in champion_customers[:5]]
 
-            success, msg = await _shopify_action(
-                "vip_email",
-                lambda: None,
-                f"Would send VIP early-access email to {len(champion_customers)} Champions (avg LTV ${avg_ltv:.0f})"
-            )
+            # Generate email draft via Claude
+            email_context = f"Write a short VIP early-access email for a clothing store. Target: {len(champion_customers)} top customers (Champions segment, avg lifetime spend ${avg_ltv:.0f}). Give them early access to new arrivals before everyone else. Keep it exclusive and appreciative, not salesy. Include a subject line and 2-3 sentence body."
+            email_draft = await narrate("Marty", email_context)
 
-            context = f"{len(champion_customers)} Champions with avg LTV of ${avg_ltv:.0f}. These are our best customers — sending them early access to new drops and a personal thank-you. {msg}"
-            commentary = await narrate("Marty", context)
-            await _save_action(session_factory, "Marty", "email_sent", f"VIP early-access: {len(champion_customers)} Champions", f"Avg LTV ${avg_ltv:.0f} → {msg}", commentary, cycle=cycle)
+            details = f"Subject: You're getting first access — new drops just landed\nTo: {', '.join(c['email'] for c in recipients[:3])}{'...' if len(recipients) > 3 else ''}\n\n{email_draft}"
+            await _save_action(session_factory, "Marty", "email_sent", f"VIP early-access → {len(champion_customers)} Champions", details, email_draft, cycle=cycle)
             actions.append(("email_campaign", "vip"))
 
     # ACTION: Tag slow movers as "needs-story" — Marty pushes back on pure discounting
