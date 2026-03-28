@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Shell from '../components/Shell'
 import Tabs from '../components/ui/Tabs'
 import Card from '../components/ui/Card'
@@ -15,8 +15,8 @@ import { useInventory } from '../hooks/useInventory'
 import { useEventStream } from '../hooks/useEventStream'
 import { formatCurrency } from '../lib/utils'
 import { scoreProducts } from '../lib/intelligence'
-import * as marcus from '../lib/agents/marcus'
-import type { AgentState, AgentAction, ScoredProduct, StoreState, Tier } from '../lib/agents/types'
+import { api } from '../lib/api'
+import type { AgentState, AgentAction, ScoredProduct, Tier } from '../lib/agents/types'
 
 const TABS = [
   { key: 'agents', label: 'Agents' },
@@ -25,12 +25,12 @@ const TABS = [
   { key: 'live', label: 'Live' },
 ]
 
-const INITIAL_AGENTS: AgentState[] = [
-  { name: 'Rick', domain: 'Operations', emoji: '🔧', status: 'idle', lastAction: null, actionCount: 0 },
-  { name: 'Hank', domain: 'Supply Chain', emoji: '📦', status: 'idle', lastAction: null, actionCount: 0 },
-  { name: 'Ron', domain: 'Finance', emoji: '💰', status: 'idle', lastAction: null, actionCount: 0 },
-  { name: 'Marcus', domain: 'Chief of Staff', emoji: '🎯', status: 'idle', lastAction: null, actionCount: 0 },
-]
+const AGENT_META: Record<string, { emoji: string; domain: string }> = {
+  Rick: { emoji: '🔧', domain: 'Operations' },
+  Hank: { emoji: '📦', domain: 'Supply Chain' },
+  Ron: { emoji: '💰', domain: 'Finance' },
+  Marcus: { emoji: '🎯', domain: 'Chief of Staff' },
+}
 
 const tierVariant: Record<Tier, 'success' | 'warning' | 'error' | 'neutral'> = {
   Core: 'success',
@@ -113,123 +113,115 @@ const inventoryColumns: Column[] = [
   },
 ]
 
+// Backend API types for agent data
+interface BackendAgentState {
+  name: string
+  status: string
+  lastAction: string | null
+  actionCount: number
+  lastCycleAt: string | null
+}
+
+interface BackendAgentAction {
+  id: string
+  timestamp: string
+  agent: string
+  type: string
+  title: string
+  details: string
+  commentary: string
+  status: string
+  productId?: string
+  cycle: number
+}
+
 export default function AutopilotPage() {
   const [tab, setTab] = useState('agents')
-  const [agents, setAgents] = useState<AgentState[]>(INITIAL_AGENTS)
+  const [agents, setAgents] = useState<AgentState[]>(
+    Object.entries(AGENT_META).map(([name, meta]) => ({
+      name: name as AgentState['name'],
+      ...meta,
+      status: 'idle' as const,
+      lastAction: null,
+      actionCount: 0,
+    }))
+  )
   const [actions, setActions] = useState<AgentAction[]>([])
   const [scored, setScored] = useState<ScoredProduct[]>([])
-  const hasActedRef = useRef(new Set<string>())
-  const orchestratedRef = useRef(false)
+  const [dailyInsight, setDailyInsight] = useState<{ commentary: string; title: string } | null>(null)
+  const [stats, setStats] = useState<{ totalActions: number; currentCycle: number; byType: Record<string, number> } | null>(null)
 
   const { data: productsData } = useProducts({ limit: 250 })
   const { data: ordersData } = useOrders({ limit: 250 })
   const { data: inventoryData } = useInventory()
   const { events, connected } = useEventStream()
 
-  const insight = marcus.getDailyInsight()
+  // Poll backend for agent states + actions every 5 seconds
+  const fetchAgentData = useCallback(async () => {
+    try {
+      const [statesRes, actionsRes, statsRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/agents/states`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/agents/actions?limit=100`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/agents/stats`),
+      ])
 
-  // Build store state ref for event handlers
-  const storeStateRef = useRef<StoreState>({
-    products: [],
-    orders: [],
-    inventory: [],
-    scored: [],
-    hourlyBaseline: [],
-  })
-
-  // Update agent state helper
-  const updateAgent = useCallback((name: string, updates: Partial<AgentState>) => {
-    setAgents((prev) =>
-      prev.map((a) => (a.name === name ? { ...a, ...updates } : a))
-    )
-  }, [])
-
-  // Count actions per agent
-  const countActions = useCallback((allActions: AgentAction[]) => {
-    const counts: Record<string, number> = {}
-    for (const a of allActions) {
-      counts[a.agent] = (counts[a.agent] || 0) + 1
-    }
-    return counts
-  }, [])
-
-  // Orchestrate on load when data is ready
-  useEffect(() => {
-    if (orchestratedRef.current) return
-    if (!productsData?.data?.length || !ordersData?.data?.length) return
-
-    orchestratedRef.current = true
-
-    const products = productsData.data
-    const orders = ordersData.data
-    const inventory = inventoryData || []
-
-    const state: StoreState = {
-      products,
-      orders,
-      inventory,
-      scored: scoreProducts(products, orders, inventory),
-      hourlyBaseline: [],
-    }
-    storeStateRef.current = state
-
-    // Mark all agents evaluating
-    setAgents((prev) => prev.map((a) => ({ ...a, status: 'evaluating' as const })))
-
-    const widgetUrl = typeof window !== 'undefined'
-      ? `${window.location.origin}/low-stock-widget.js`
-      : undefined
-
-    marcus
-      .orchestrateOnLoad(products, orders, inventory, state, hasActedRef.current, widgetUrl)
-      .then(({ allActions, scored: freshScored }) => {
-        setActions(allActions)
-        setScored(freshScored)
-        storeStateRef.current.scored = freshScored
-
-        // Update agent states
-        const counts = countActions(allActions)
+      if (statesRes.ok) {
+        const backendStates: BackendAgentState[] = await statesRes.json()
         setAgents((prev) =>
           prev.map((a) => {
-            const agentActions = allActions.filter((act) => act.agent === a.name)
-            const last = agentActions[agentActions.length - 1]
+            const bs = backendStates.find((s) => s.name === a.name)
+            if (!bs) return a
             return {
               ...a,
-              status: 'active',
-              actionCount: counts[a.name] || 0,
-              lastAction: last?.title || null,
+              status: (bs.status as AgentState['status']) || 'idle',
+              lastAction: bs.lastAction,
+              actionCount: bs.actionCount,
             }
           })
         )
-      })
-      .catch(() => {
-        setAgents((prev) => prev.map((a) => ({ ...a, status: 'idle' as const })))
-      })
-  }, [productsData, ordersData, inventoryData, countActions])
-
-  // React to SSE events
-  useEffect(() => {
-    if (events.length === 0 || !orchestratedRef.current) return
-    const latestEvent = events[0]
-
-    const newActions = marcus.orchestrateOnEvent(
-      latestEvent,
-      storeStateRef.current,
-      hasActedRef.current
-    )
-
-    if (newActions.length > 0) {
-      setActions((prev) => [...newActions, ...prev])
-
-      // Update agent counts
-      for (const action of newActions) {
-        updateAgent(action.agent, {
-          actionCount: actions.filter((a) => a.agent === action.agent).length + 1,
-          lastAction: action.title,
-        })
       }
+
+      if (actionsRes.ok) {
+        const backendActions: BackendAgentAction[] = await actionsRes.json()
+        const mapped: AgentAction[] = backendActions.map((a) => ({
+          id: a.id,
+          timestamp: a.timestamp,
+          agent: a.agent as AgentAction['agent'],
+          type: a.type as AgentAction['type'],
+          title: a.title,
+          details: a.commentary || a.details, // Show Claude commentary when available
+          status: a.status as AgentAction['status'],
+          productId: a.productId,
+        }))
+        setActions(mapped)
+
+        // Find latest daily insight for the DailyInsight card
+        const insight = backendActions.find((a) => a.type === 'daily_insight' && a.agent === 'Marcus' && a.commentary)
+        if (insight) {
+          setDailyInsight({ commentary: insight.commentary, title: insight.title })
+        }
+      }
+
+      if (statsRes.ok) {
+        setStats(await statsRes.json())
+      }
+    } catch {
+      // Backend not available — that's fine, we'll retry
     }
-  }, [events])
+  }, [])
+
+  useEffect(() => {
+    fetchAgentData()
+    const interval = setInterval(fetchAgentData, 5000)
+    return () => clearInterval(interval)
+  }, [fetchAgentData])
+
+  // Score products client-side for the inventory tab
+  useEffect(() => {
+    if (!productsData?.data?.length || !ordersData?.data?.length) return
+    const inventory = inventoryData || []
+    setScored(scoreProducts(productsData.data, ordersData.data, inventory))
+  }, [productsData, ordersData, inventoryData])
 
   // KPI stats
   const totalStock = scored.reduce((sum, p) => sum + p.inventory, 0)
@@ -240,8 +232,12 @@ export default function AutopilotPage() {
   return (
     <Shell title="AutoPilot">
       <div className="space-y-4">
-        {/* Daily Insight */}
-        <DailyInsight emoji={insight.emoji} text={insight.text} category={insight.category} />
+        {/* Daily Insight — Claude-narrated by Marcus */}
+        {dailyInsight ? (
+          <DailyInsight emoji="🎯" text={dailyInsight.commentary} category="Marcus — Daily Insight" />
+        ) : (
+          <DailyInsight emoji="⏳" text="Agents are warming up... first cycle will start momentarily." category="Standby" />
+        )}
 
         {/* Tabs */}
         <Tabs tabs={TABS} active={tab} onChange={setTab} />
@@ -254,7 +250,10 @@ export default function AutopilotPage() {
                 <AgentCard key={agent.name} agent={agent} />
               ))}
             </div>
-            <Card title="Activity Feed" subtitle={`${actions.length} actions taken`}>
+            <Card
+              title="Activity Feed"
+              subtitle={`${stats?.totalActions || actions.length} actions across ${stats?.currentCycle || 0} cycles`}
+            >
               <ActionLog actions={actions} maxItems={20} />
             </Card>
           </div>
@@ -279,10 +278,10 @@ export default function AutopilotPage() {
         {tab === 'actions' && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <KPICard title="Total Actions" value={actions.length} />
-              <KPICard title="Discounts Created" value={actions.filter((a) => a.type === 'discount_created').length} />
-              <KPICard title="Alerts Sent" value={actions.filter((a) => a.type === 'stockout_alert' || a.type === 'email_sent').length} />
-              <KPICard title="Health Issues" value={actions.filter((a) => a.type === 'health_issue').length} />
+              <KPICard title="Total Actions" value={stats?.totalActions || actions.length} />
+              <KPICard title="Discounts Created" value={stats?.byType?.discount_created || 0} />
+              <KPICard title="Alerts Sent" value={(stats?.byType?.stockout_alert || 0) + (stats?.byType?.email_sent || 0)} />
+              <KPICard title="Health Issues" value={stats?.byType?.health_issue || 0} />
             </div>
             <Card title="Full Action Log">
               <ActionLog actions={actions} maxItems={100} />
@@ -296,7 +295,7 @@ export default function AutopilotPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <KPICard title="SSE Status" value={connected ? 'Connected' : 'Offline'} />
               <KPICard title="Events Received" value={events.length} />
-              <KPICard title="Agent Actions" value={actions.length} />
+              <KPICard title="Agent Cycles" value={stats?.currentCycle || 0} />
               <KPICard title="Active Agents" value={agents.filter((a) => a.status === 'active').length} suffix="/ 4" />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

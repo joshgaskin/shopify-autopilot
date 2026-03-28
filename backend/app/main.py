@@ -18,6 +18,8 @@ from app.models import Product
 from app.shopify import ShopifyClient
 from app.sync import sync_all
 from app.simulator import run_simulator
+from app.agents.voice import init_voice, close_voice
+from app.agents.orchestrator import run_agent_loop
 from app.routers import (
     store,
     products,
@@ -29,6 +31,7 @@ from app.routers import (
     actions,
     shopify_proxy,
 )
+from app.routers import agents as agents_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -67,6 +70,15 @@ async def lifespan(app: FastAPI):
                 logger.error("Initial sync failed: %s", exc)
                 await db.rollback()
 
+            # Seed sample data if Shopify sync failed
+            async with async_session_factory() as seed_db:
+                result2 = await seed_db.execute(select(func.count()).select_from(Product))
+                if (result2.scalar() or 0) == 0:
+                    from app.agents.seed import seed_if_empty
+                    seeded = await seed_if_empty(seed_db)
+                    if seeded:
+                        logger.info("Seeded sample data for agent demo")
+
     # Start order simulator
     simulator_task = None
     if settings.SIMULATOR_ENABLED:
@@ -74,6 +86,13 @@ async def lifespan(app: FastAPI):
             run_simulator(client, async_session_factory)
         )
         logger.info("Order simulator started")
+
+    # Start autonomous agent orchestration loop
+    init_voice(settings.ANTHROPIC_API_KEY)
+    agent_task = asyncio.create_task(
+        run_agent_loop(async_session_factory, interval=settings.AGENT_LOOP_INTERVAL)
+    )
+    logger.info("Agent orchestration loop started")
 
     logger.info("Backend ready — %s", settings.SHOPIFY_STORE_URL)
 
@@ -86,6 +105,13 @@ async def lifespan(app: FastAPI):
             await simulator_task
         except asyncio.CancelledError:
             pass
+    if agent_task and not agent_task.done():
+        agent_task.cancel()
+        try:
+            await agent_task
+        except asyncio.CancelledError:
+            pass
+    await close_voice()
     await client.client.aclose()
     logger.info("Shutdown complete")
 
@@ -116,6 +142,7 @@ app.include_router(analytics.router)
 app.include_router(events.router)
 app.include_router(actions.router)
 app.include_router(shopify_proxy.router)
+app.include_router(agents_router.router)
 
 
 @app.get("/health")
