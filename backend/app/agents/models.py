@@ -1,7 +1,7 @@
 """
 Agent action model — persisted to SQLite.
 """
-from sqlalchemy import JSON, Integer, String
+from sqlalchemy import JSON, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -22,6 +22,32 @@ class AgentAction(Base):
     product_id: Mapped[str | None] = mapped_column(String, nullable=True)
     cycle: Mapped[int] = mapped_column(Integer, default=0)  # which orchestration cycle
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class PurchaseOrder(Base):
+    __tablename__ = "purchase_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    po_number: Mapped[str] = mapped_column(String, unique=True)
+    status: Mapped[str] = mapped_column(String, default="draft")  # draft, ordered, shipped, received
+    total_qty: Mapped[int] = mapped_column(Integer, default=0)
+    total_cost: Mapped[float] = mapped_column(Float, default=0.0)
+    notes: Mapped[str] = mapped_column(String, default="")
+    created_by: Mapped[str] = mapped_column(String, default="Hank")  # which agent created it
+    created_at: Mapped[str] = mapped_column(String, default="")
+    updated_at: Mapped[str] = mapped_column(String, default="")
+
+
+class POLineItem(Base):
+    __tablename__ = "po_line_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    po_id: Mapped[int] = mapped_column(Integer)  # FK to purchase_orders.id
+    product_id: Mapped[str] = mapped_column(String)
+    product_title: Mapped[str] = mapped_column(String, default="")
+    qty: Mapped[int] = mapped_column(Integer, default=0)
+    cost_per_unit: Mapped[float] = mapped_column(Float, default=0.0)
+    total_cost: Mapped[float] = mapped_column(Float, default=0.0)
 
 
 class AgentState(Base):

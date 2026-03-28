@@ -29,6 +29,8 @@ const typeLabels: Record<string, string> = {
   email_sent: 'Email Campaign',
   segment_analyzed: 'Segments',
   product_tagged: 'Tagged',
+  po_created: 'Purchase Order',
+  reorder_covered: 'Covered',
 }
 
 const statusVariant: Record<string, 'success' | 'warning' | 'error'> = {

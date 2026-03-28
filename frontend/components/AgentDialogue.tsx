@@ -36,6 +36,8 @@ const typeLabels: Record<string, { label: string; variant: 'success' | 'warning'
   email_sent: { label: 'Campaign', variant: 'success' },
   segment_analyzed: { label: 'Segments', variant: 'neutral' },
   product_tagged: { label: 'Tagged', variant: 'neutral' },
+  po_created: { label: 'PO Created', variant: 'success' },
+  reorder_covered: { label: 'Covered', variant: 'success' },
 }
 
 export default function AgentDialogue({ actions, maxItems = 30 }: AgentDialogueProps) {

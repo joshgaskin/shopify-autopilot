@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 async def init_db() -> None:
     """Create all tables. Called once on startup."""
     from app.models import Product, Order, Customer, Event  # noqa: F401
-    from app.agents.models import AgentAction, AgentState  # noqa: F401
+    from app.agents.models import AgentAction, AgentState, PurchaseOrder, POLineItem  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

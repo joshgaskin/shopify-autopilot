@@ -32,6 +32,7 @@ from app.routers import (
     shopify_proxy,
 )
 from app.routers import agents as agents_router
+from app.routers import purchase_orders as po_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -144,6 +145,7 @@ app.include_router(events.router)
 app.include_router(actions.router)
 app.include_router(shopify_proxy.router)
 app.include_router(agents_router.router)
+app.include_router(po_router.router)
 
 
 @app.get("/health")

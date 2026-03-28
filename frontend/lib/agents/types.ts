@@ -29,6 +29,8 @@ export type ActionType =
   | 'email_sent'
   | 'segment_analyzed'
   | 'product_tagged'
+  | 'po_created'
+  | 'reorder_covered'
 
 export interface AgentAction {
   id: string

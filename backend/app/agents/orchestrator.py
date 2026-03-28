@@ -31,6 +31,7 @@ from app.agents.voice import narrate, narrate_coordination
 from app.agents.models import AgentAction, AgentState
 from app.agents.personas import DAILY_INSIGHTS
 from app.agents.intelligence import segment_customers
+from app.agents.models import PurchaseOrder, POLineItem
 from app.models import Product, Order, Customer
 from app.events import EventManager
 
@@ -225,8 +226,25 @@ async def _run_rick(products, orders, inventory, scored, session_factory, cycle)
 # ── HANK — Supply Chain ───────────────────────────────────────────────────────
 
 async def _run_hank(products, orders, inventory, scored, session_factory, cycle):
-    """Hank: product scoring + reorder recommendations + tier tagging."""
+    """Hank: product scoring + reorder recommendations + PO creation.
+
+    Factors in inbound stock from active POs — won't recommend reordering
+    something that's already on the way.
+    """
     actions = []
+
+    # Load inbound stock from active POs
+    inbound_stock: dict[str, int] = {}
+    async with session_factory() as db:
+        active_pos = await db.execute(
+            select(PurchaseOrder).where(PurchaseOrder.status.in_(["draft", "ordered", "shipped"]))
+        )
+        for po in active_pos.scalars().all():
+            items = await db.execute(select(POLineItem).where(POLineItem.po_id == po.id))
+            for item in items.scalars().all():
+                inbound_stock[item.product_id] = inbound_stock.get(item.product_id, 0) + item.qty
+
+    total_inbound = sum(inbound_stock.values())
 
     # Score + tag products with tier
     key = "scored-all"
@@ -239,7 +257,7 @@ async def _run_hank(products, orders, inventory, scored, session_factory, cycle)
 
         # ACTION: Tag products with their tier on Shopify
         tagged_count = 0
-        for product in scored[:10]:  # Tag top 10 to avoid rate limits
+        for product in scored[:10]:
             tag_success, _ = await _shopify_action(
                 f"tag_tier_{product.id}",
                 lambda p=product: _shopify_client.graphql(
@@ -252,42 +270,92 @@ async def _run_hank(products, orders, inventory, scored, session_factory, cycle)
                 tagged_count += 1
 
         tag_note = f" → Tagged {tagged_count} products on Shopify" if tagged_count > 0 else " → [DEMO] Would tag products with tier labels on Shopify"
+        inbound_note = f" | {total_inbound} units inbound across {len(inbound_stock)} products" if total_inbound > 0 else ""
 
-        context = f"Scored {len(scored)} products: {core} Core, {strong} Strong, {slow} Slow, {exit_count} Exit. Top velocity: {max((p.velocity for p in scored), default=0):.2f}/day.{tag_note}"
+        context = f"Scored {len(scored)} products: {core} Core, {strong} Strong, {slow} Slow, {exit_count} Exit. Top velocity: {max((p.velocity for p in scored), default=0):.2f}/day.{tag_note}{inbound_note}"
         commentary = await narrate("Hank", context)
-        await _save_action(session_factory, "Hank", "product_scored", f"Scored {len(scored)} products", f"{core} Core, {strong} Strong, {slow} Slow, {exit_count} Exit{tag_note}", commentary, cycle=cycle)
+        await _save_action(session_factory, "Hank", "product_scored", f"Scored {len(scored)} products", f"{core} Core, {strong} Strong, {slow} Slow, {exit_count} Exit{tag_note}{inbound_note}", commentary, cycle=cycle)
         actions.append(("product_scored", f"{len(scored)} products"))
 
-    # Reorder recommendations
+    # Reorder recommendations — factor in inbound stock
     critical = [p for p in scored if 0 < p.days_left <= 7 and p.tier != "Exit"]
+    po_line_items_to_create = []
+
     for product in critical:
         key = f"reorder-{product.id}"
         if key in _has_acted:
             continue
+
+        # Check if there's already inbound stock for this product
+        incoming = inbound_stock.get(product.id, 0)
+        effective_stock = product.inventory + incoming
+        effective_days = round(effective_stock / product.velocity) if product.velocity > 0 else 999
+
+        if effective_days > 7:
+            # Inbound stock covers us — skip reorder, but note it
+            _has_acted.add(key)
+            context = f"Product '{product.title}' looks low ({product.inventory} on hand, {product.days_left} days) BUT {incoming} units inbound from active PO. Effective runway: {effective_days} days. No reorder needed."
+            commentary = await narrate("Hank", context)
+            await _save_action(session_factory, "Hank", "reorder_recommendation", f"Covered: {product.title}", f"{incoming} units inbound → {effective_days} days effective runway", commentary, product_id=product.id, cycle=cycle)
+            actions.append(("reorder_covered", product.title))
+            continue
+
         _has_acted.add(key)
 
-        reorder_qty = max(1, round(product.velocity * 14))
+        # Calculate reorder qty: 14 days of stock minus what's already coming
+        reorder_qty = max(1, round(product.velocity * 14) - incoming)
+        est_cost = round(product.price * 0.4 * reorder_qty, 2)  # Rough 40% COGS estimate
 
-        # ACTION: Create draft order as a purchase order signal
-        po_result = ""
-        po_success, po_msg = await _shopify_action(
-            f"draft_po_{product.id}",
-            lambda p=product, qty=reorder_qty: _shopify_client.rest(
-                "POST", "draft_orders.json",
-                json={"draft_order": {
-                    "line_items": [{"title": f"REORDER: {p.title}", "quantity": qty, "price": "0.00"}],
-                    "note": f"Auto-generated reorder by Hank (Supply Chain Agent). {qty} units needed — {p.days_left} days of stock remaining.",
-                    "tags": "agent-reorder,auto-generated",
-                }}
-            ),
-            f"Would create draft PO for {reorder_qty}x {product.title}"
-        )
-        po_result = f" → {'Created draft PO on Shopify' if po_success else po_msg}"
+        po_line_items_to_create.append({
+            "product_id": product.id,
+            "product_title": product.title,
+            "qty": reorder_qty,
+            "cost_per_unit": round(product.price * 0.4, 2),
+            "total_cost": est_cost,
+        })
 
-        context = f"Product '{product.title}' ({product.tier} tier) has {product.days_left} days of stock at {product.velocity}/day. Current stock: {product.inventory}. Ordering {reorder_qty} units for 14 days of runway.{po_result}"
+        incoming_note = f" ({incoming} already inbound, ordering {reorder_qty} additional)" if incoming > 0 else ""
+        context = f"Product '{product.title}' ({product.tier} tier) has {product.days_left} days of stock at {product.velocity}/day. Current stock: {product.inventory}.{incoming_note} Creating PO for {reorder_qty} units (14-day supply). Est. cost: ${est_cost:.0f}."
         commentary = await narrate("Hank", context)
-        await _save_action(session_factory, "Hank", "reorder_recommendation", f"Reorder: {product.title}", f"{product.days_left} days left, recommend {reorder_qty} units{po_result}", commentary, product_id=product.id, cycle=cycle)
+        await _save_action(session_factory, "Hank", "reorder_recommendation", f"Reorder: {product.title}", f"{product.days_left} days left → PO for {reorder_qty} units (${est_cost:.0f}){incoming_note}", commentary, product_id=product.id, cycle=cycle)
         actions.append(("reorder", product.title))
+
+    # Create a consolidated PO if we have line items
+    if po_line_items_to_create:
+        now = datetime.now(timezone.utc)
+        po_number = f"PO-{now.strftime('%Y%m%d')}-{cycle:03d}"
+        total_qty = sum(item["qty"] for item in po_line_items_to_create)
+        total_cost = sum(item["total_cost"] for item in po_line_items_to_create)
+
+        async with session_factory() as db:
+            po = PurchaseOrder(
+                po_number=po_number,
+                status="draft",
+                total_qty=total_qty,
+                total_cost=round(total_cost, 2),
+                notes=f"Auto-generated by Hank (Cycle {cycle}). {len(po_line_items_to_create)} products need restocking.",
+                created_by="Hank",
+                created_at=now.isoformat(),
+                updated_at=now.isoformat(),
+            )
+            db.add(po)
+            await db.flush()  # Get PO id
+
+            for item in po_line_items_to_create:
+                db.add(POLineItem(
+                    po_id=po.id,
+                    product_id=item["product_id"],
+                    product_title=item["product_title"],
+                    qty=item["qty"],
+                    cost_per_unit=item["cost_per_unit"],
+                    total_cost=item["total_cost"],
+                ))
+            await db.commit()
+
+        context = f"Created {po_number}: {len(po_line_items_to_create)} line items, {total_qty} total units, ${total_cost:.0f} estimated cost. Status: DRAFT — waiting for approval."
+        commentary = await narrate("Hank", context)
+        await _save_action(session_factory, "Hank", "po_created", f"Created {po_number}", f"{total_qty} units across {len(po_line_items_to_create)} products — ${total_cost:.0f}", commentary, cycle=cycle)
+        actions.append(("po_created", po_number))
 
     return actions
 
